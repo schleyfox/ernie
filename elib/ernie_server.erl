@@ -42,6 +42,7 @@ init([Port, Configs]) ->
   {ok, LSock} = try_listen(Port, 500),
   spawn(fun() -> loop(LSock) end),
   Map = init_map(Configs),
+  run_init_functions(Configs),
   io:format("pidmap = ~p~n", [Map]),
   {ok, #state{lsock = LSock, map = Map}}.
 
@@ -107,6 +108,19 @@ extract_mapping(Config) ->
   Id = proplists:get_value(id, Config),
   Mod = proplists:get_value(module, Config),
   {Mod, Id}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Init Function
+
+run_init_functions(Configs) ->
+  lists:foreach(fun(Config) ->
+      case proplists:get_value(init, Config) of
+        undefined -> undefined;
+        {Mod, Func, Args} -> apply(Mod, Func, Args)
+      end
+    end,
+    Configs).
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Listen and loop
