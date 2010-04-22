@@ -12,15 +12,19 @@ process(ActionTerm, Request) ->
       Data = bert:encode({reply, Result}),
       gen_tcp:send(Sock, Data)
   catch
-    error:Error ->
-      BError = list_to_binary(io_lib:format("~p", [Error])),
-      Trace = erlang:get_stacktrace(),
-      BTrace = lists:map(fun(X) -> list_to_binary(io_lib:format("~p", [X])) end, Trace),
-      Data = term_to_binary({error, [user, 0, <<"RuntimeError">>, BError, BTrace]}),
-      gen_tcp:send(Sock, Data)
+    exit:Error -> handle_error(Sock, Error);
+    error:Error -> handle_error(Sock, Error)
   end,
   ok = gen_tcp:close(Sock),
   Log = Request#request.log,
   Log2 = Log#log{tdone = erlang:now()},
   Request2 = Request#request{log = Log2},
   ernie_access_logger:acc(Request2).
+
+handle_error(Sock, Error) ->
+  BError = list_to_binary(io_lib:format("~p", [Error])),
+  Trace = erlang:get_stacktrace(),
+  BTrace = lists:map(fun(X) -> list_to_binary(io_lib:format("~p", [X])) end, Trace),
+  Data = term_to_binary({error, [user, 0, <<"RuntimeError">>, BError, BTrace]}),
+  gen_tcp:send(Sock, Data).
+  
